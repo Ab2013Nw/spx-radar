@@ -1,14 +1,12 @@
 """
 backtest.py
 -----------
-يشغّل نفس منطق spx_radar.py بالضبط، بس على بيانات تاريخية (آخر ~6 أشهر)،
+يشغّل نفس منطق spx_radar.py على بيانات تاريخية بفريم 15 دقيقة (آخر 60 يوم)،
 عشان نشوف: كل مرة صار فيها قرار Call/Put، هل السوق فعلاً تحرك بنفس
-الاتجاه بعدها، ولا لأ؟
-
-النتيجة: نسبة نجاح حقيقية مبنية على بيانات، مو تخمين.
+الاتجاه بعدها خلال 15-30 دقيقة، ولا لأ؟
 
 ⚠️ هذا اختبار تاريخي (Backtest) بس — الأداء بالماضي ما يضمن نفس الأداء
-بالمستقبل. الهدف إنه يعطيك فكرة أولية عن قوة الفكرة، مو ضمان ربح.
+بالمستقبل.
 """
 
 import json
@@ -18,12 +16,11 @@ import yfinance as yf
 from scipy.stats import percentileofscore
 
 WEIGHTS_FILE = "weights.json"
-INTERVAL = "1h"
-BACKTEST_PERIOD = "180d"
+INTERVAL = "15m"
+BACKTEST_PERIOD = "60d"
 HISTORY_WINDOW = 30
 PERCENTILE_HIGH = 85
 PERCENTILE_LOW = 15
-FORWARD_HOURS = 4
 OUTPUT_FILE = "backtest_results.csv"
 
 
@@ -128,17 +125,17 @@ def run_backtest():
 
     print(f"عدد القرارات (تغيّرات) اللي صارت بالفترة التاريخية: {len(trades)}")
 
-    for forward_hours in (1, 2, 4):
-        evaluate_horizon(trades, spx_close, forward_hours)
+    for steps, label in ((1, "15 دقيقة"), (2, "30 دقيقة")):
+        evaluate_horizon(trades, spx_close, steps, label)
 
 
-def evaluate_horizon(trades, spx_close, forward_hours):
+def evaluate_horizon(trades, spx_close, steps, label):
     results = []
     for trade in trades:
         ts = trade["time"]
         try:
             entry_price = spx_close.loc[spx_close.index >= ts].iloc[0]
-            future_idx = spx_close.index[spx_close.index >= ts][forward_hours]
+            future_idx = spx_close.index[spx_close.index >= ts][steps]
             exit_price = spx_close.loc[future_idx]
         except (IndexError, KeyError):
             continue
@@ -156,10 +153,10 @@ def evaluate_horizon(trades, spx_close, forward_hours):
 
     results_df = pd.DataFrame(results)
     if results_df.empty:
-        print(f"[أفق {forward_hours} ساعة] ما فيه قرارات كافية للتقييم.")
+        print(f"[أفق {label}] ما فيه قرارات كافية للتقييم.")
         return
 
-    if forward_hours == 4:
+    if steps == 2:
         results_df.to_csv(OUTPUT_FILE, index=False)
 
     total = len(results_df)
@@ -169,7 +166,7 @@ def evaluate_horizon(trades, spx_close, forward_hours):
     put_df = results_df[results_df["decision"] == "PUT"]
 
     print("-" * 50)
-    print(f"[أفق {forward_hours} ساعة] إجمالي: {total} | نجاح إجمالي: {win_rate:.1f}%")
+    print(f"[أفق {label}] إجمالي: {total} | نجاح إجمالي: {win_rate:.1f}%")
     if len(call_df):
         print(f"  CALL: {len(call_df)} قرار، نجاح {call_df['won'].mean()*100:.1f}%")
     if len(put_df):
