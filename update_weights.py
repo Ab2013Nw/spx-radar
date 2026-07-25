@@ -8,18 +8,26 @@ update_weights.py
 السوقية ما تتغير بسرعة، وهذا يوفر وقت التشغيل ويقلل الطلبات.
 """
 
+import io
 import json
 import time
+import requests
 import pandas as pd
 import yfinance as yf
 
 WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 OUTPUT_FILE = "weights.json"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"
+}
 
 
 def get_sp500_tickers():
     """يجيب رموز شركات S&P 500 من ويكيبيديا ويصلحها لصيغة Yahoo Finance."""
-    tables = pd.read_html(WIKI_URL)
+    resp = requests.get(WIKI_URL, headers=HEADERS, timeout=20)
+    resp.raise_for_status()
+    tables = pd.read_html(io.StringIO(resp.text))
     df = tables[0]
     tickers = df["Symbol"].tolist()
     # بعض الرموز فيها نقطة (BRK.B) ولازم تصير شرطة (BRK-B) عشان yfinance
