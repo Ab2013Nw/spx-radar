@@ -128,12 +128,17 @@ def run_backtest():
 
     print(f"عدد القرارات (تغيّرات) اللي صارت بالفترة التاريخية: {len(trades)}")
 
+    for forward_hours in (1, 2, 4):
+        evaluate_horizon(trades, spx_close, forward_hours)
+
+
+def evaluate_horizon(trades, spx_close, forward_hours):
     results = []
     for trade in trades:
         ts = trade["time"]
         try:
             entry_price = spx_close.loc[spx_close.index >= ts].iloc[0]
-            future_idx = spx_close.index[spx_close.index >= ts][FORWARD_HOURS]
+            future_idx = spx_close.index[spx_close.index >= ts][forward_hours]
             exit_price = spx_close.loc[future_idx]
         except (IndexError, KeyError):
             continue
@@ -145,36 +150,30 @@ def run_backtest():
         results.append({
             "time": ts,
             "decision": trade["decision"],
-            "spx_entry": round(float(entry_price), 2),
-            "spx_exit": round(float(exit_price), 2),
             "move_pct": round(float(move_pct), 3),
             "won": won,
         })
 
     results_df = pd.DataFrame(results)
     if results_df.empty:
-        print("ما فيه قرارات كافية بالفترة المختارة لتقييمها.")
+        print(f"[أفق {forward_hours} ساعة] ما فيه قرارات كافية للتقييم.")
         return
 
-    results_df.to_csv(OUTPUT_FILE, index=False)
+    if forward_hours == 4:
+        results_df.to_csv(OUTPUT_FILE, index=False)
 
     total = len(results_df)
     wins = results_df["won"].sum()
     win_rate = wins / total * 100
-
     call_df = results_df[results_df["decision"] == "CALL"]
     put_df = results_df[results_df["decision"] == "PUT"]
 
-    print("=" * 50)
-    print(f"إجمالي القرارات المُختبرة: {total}")
-    print(f"عدد الناجحة: {wins}  |  نسبة النجاح الإجمالية: {win_rate:.1f}%")
+    print("-" * 50)
+    print(f"[أفق {forward_hours} ساعة] إجمالي: {total} | نجاح إجمالي: {win_rate:.1f}%")
     if len(call_df):
-        print(f"CALL: {len(call_df)} قرار، نجاح {call_df['won'].mean()*100:.1f}%")
+        print(f"  CALL: {len(call_df)} قرار، نجاح {call_df['won'].mean()*100:.1f}%")
     if len(put_df):
-        print(f"PUT: {len(put_df)} قرار، نجاح {put_df['won'].mean()*100:.1f}%")
-    print(f"متوسط الحركة بعد {FORWARD_HOURS} ساعات: {results_df['move_pct'].mean():.3f}%")
-    print("=" * 50)
-    print(f"تفاصيل كل قرار محفوظة في {OUTPUT_FILE}")
+        print(f"  PUT: {len(put_df)} قرار، نجاح {put_df['won'].mean()*100:.1f}%")
 
 
 if __name__ == "__main__":
