@@ -1,0 +1,35 @@
+name: Update S&P 500 Weights
+
+on:
+  schedule:
+    - cron: "0 6 * * 0"   # كل أحد الساعة 6 صباحاً UTC
+  workflow_dispatch: {}     # يسمح بتشغيله يدوياً من تبويب Actions
+
+permissions:
+  contents: write
+
+jobs:
+  update-weights:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run update_weights.py
+        run: python update_weights.py
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "spx-radar-bot"
+          git config user.email "actions@github.com"
+          git add weights.json
+          git diff --cached --quiet || git commit -m "تحديث أسبوعي لأوزان S&P 500"
+          git push
