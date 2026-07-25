@@ -38,17 +38,21 @@ def get_sp500_tickers():
 def fetch_market_caps(tickers):
     """يجيب القيمة السوقية لكل شركة. يستخدم fast_info وهو خفيف وسريع."""
     caps = {}
+    errors_shown = 0
     for i, symbol in enumerate(tickers):
         try:
-            t = yf.Ticker(symbol)
-            cap = t.fast_info.get("market_cap")
+            info = yf.Ticker(symbol).fast_info
+            cap = info.get("market_cap") if hasattr(info, "get") else info["market_cap"]
             if cap:
                 caps[symbol] = float(cap)
         except Exception as e:
-            print(f"تعذر جلب القيمة السوقية لـ {symbol}: {e}")
+            if errors_shown < 8:
+                print(f"تعذر جلب القيمة السوقية لـ {symbol}: {type(e).__name__}: {e}")
+                errors_shown += 1
         # وقفة بسيطة كل شوي عشان ما نضغط على الخادم
         if i % 50 == 0 and i > 0:
             time.sleep(2)
+    print(f"نجح جلب القيمة السوقية لـ {len(caps)} من أصل {len(tickers)} شركة")
     return caps
 
 
