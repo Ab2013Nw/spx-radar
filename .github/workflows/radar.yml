@@ -1,0 +1,40 @@
+name: SPX Radar
+
+on:
+  schedule:
+    # يشتغل كل 5 دقايق، من 13:00 لين 21:00 UTC (يغطي وقت تداول أمريكا
+    # صيفاً وشتاءً مع هامش بسيط)، من الإثنين للجمعة فقط
+    - cron: "*/5 13-21 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  run-radar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run spx_radar.py
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python spx_radar.py
+
+      - name: Commit and push state
+        run: |
+          git config user.name "spx-radar-bot"
+          git config user.email "actions@github.com"
+          git add state.json
+          git diff --cached --quiet || git commit -m "تحديث حالة الرادار"
+          git push
