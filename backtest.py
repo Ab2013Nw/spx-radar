@@ -91,7 +91,10 @@ def run_backtest():
     print(f"عدد الأوقات (الشموع) بالفترة التاريخية: {len(signals_df)}")
 
     spx = yf.download("^GSPC", period=BACKTEST_PERIOD, interval=INTERVAL, progress=False)
-    spx_close = spx["Close"]
+    if isinstance(spx.columns, pd.MultiIndex):
+        spx_close = spx["Close"].iloc[:, 0]
+    else:
+        spx_close = spx["Close"]
 
     history = []
     last_decision = None
