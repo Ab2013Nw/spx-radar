@@ -1,14 +1,8 @@
 """
 backtest_v2.py
 --------------
-نسخة مطوّرة من فكرة "إجماع الشركات" الأصلية، بثلاث تحسينات جوهرية:
-
-1. الإشارة لكل شركة تُحسب بمتوسط متحرك (3 شموع) بدل شمعة سابقة وحدة
-   -> يقلل الضوضاء العشوائية.
-2. نقيس "تسارع" نسبة الشركات الصاعدة (Momentum of Breadth) بدل مستواها
-   الثابت -> يلتقط الزخم وهو يتكوّن، مو بس وقت وصوله لذروة.
-3. شرط تأكيد إضافي: ما نصدر قرار إلا لو SPX نفسه متحرك بنفس الاتجاه
-   بآخر شمعتين -> تأكيد مزدوج من مصدرين مختلفين (الشركات + المؤشر).
+نسخة مطوّرة من فكرة "إجماع الشركات" الأصلية، بثلاث تحسينات جوهرية، مع
+تقسيم النتائج لنصفين زمنيين للتأكد من ثباتها ومو صدفة إحصائية.
 """
 
 import json
@@ -140,8 +134,32 @@ def run_backtest():
 
     print(f"عدد القرارات (تغيّرات): {len(trades)}")
 
+    if not trades:
+        print("ما فيه قرارات كافية للتقييم.")
+        return
+
+    trades_sorted = sorted(trades, key=lambda t: t["time"])
+    mid = len(trades_sorted) // 2
+    first_half = trades_sorted[:mid]
+    second_half = trades_sorted[mid:]
+
+    print("\n" + "#" * 60)
+    print(f"النصف الأول (الأقدم زمنياً) — {len(first_half)} قرار")
+    print("#" * 60)
     for steps, label in ((1, "15 دقيقة"), (2, "30 دقيقة")):
-        evaluate_horizon(trades, spx_close, steps, label)
+        evaluate_horizon(first_half, spx_close, steps, label)
+
+    print("\n" + "#" * 60)
+    print(f"النصف الثاني (الأحدث زمنياً) — {len(second_half)} قرار")
+    print("#" * 60)
+    for steps, label in ((1, "15 دقيقة"), (2, "30 دقيقة")):
+        evaluate_horizon(second_half, spx_close, steps, label)
+
+    print("\n" + "#" * 60)
+    print(f"الإجمالي الكامل — {len(trades_sorted)} قرار")
+    print("#" * 60)
+    for steps, label in ((1, "15 دقيقة"), (2, "30 دقيقة")):
+        evaluate_horizon(trades_sorted, spx_close, steps, label)
 
 
 def evaluate_horizon(trades, spx_close, steps, label):
