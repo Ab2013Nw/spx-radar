@@ -1,0 +1,22 @@
+name: SPX Radar Backtest V3 (VIX Filter)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  run-backtest-v3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run backtest_v3.py
+        run: python backtest_v3.py
